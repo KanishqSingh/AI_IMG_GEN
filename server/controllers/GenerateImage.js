@@ -1,39 +1,43 @@
 import * as dotenv from "dotenv";
+import fetch from "node-fetch"; // if you don't have it yet, install with `npm install node-fetch`
 import { createError } from "../error.js";
-import { Configuration, OpenAIApi } from "openai";
 
 dotenv.config();
 
-// Setup open ai api key
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
-console.log(process.env.OPENAI_API_KEY);
-
-
-// Controller to generate Image
 export const generateImage = async (req, res, next) => {
   try {
     const { prompt } = req.body;
+    // console.log("prompt", prompt);
 
-    const response = await openai.createImage({
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      response_format: "b64_json",
+    const response = await fetch("https://clipdrop-api.co/text-to-image/v1", {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.CLIPDROP_API_KEY, // put your ClipDrop API key in .env
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
     });
-    
-    const generatedImage = response.data.data[0].b64_json;
-    res.status(200).json({ photo: generatedImage });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to load image");
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = buffer.toString("base64");
+
+    // Send full data URI string here
+    res.status(200).json({
+      photo: `data:image/png;base64,${base64Image}`,
+    });
   } catch (error) {
+    console.error("Image generation error:", error.message);
     next(
       createError(
-        error.status,
-        error?.response?.data?.error.message || error.message,
-        console.log(error.message)
+        error.status || 500,
+        error?.response?.data?.error?.message || error.message
       )
-      
     );
   }
 };
