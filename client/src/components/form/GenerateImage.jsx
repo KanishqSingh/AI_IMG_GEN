@@ -62,21 +62,21 @@ const GenerateImage = ({
   const generateImage = async () => {
     setGenerateImageLoading(true);
     setError("");
-    await GenerateImageFromPrompt({ prompt: post.prompt })
-      .then((res) => {
-        setPost({
-          ...post,
-          photo: `data:image/jpeg;base64,${res?.data?.photo}`,
-        });
-        setGenerateImageLoading(false);
-      })
-      .catch((error) => {
-        setError(error?.response?.data?.message);
-        setGenerateImageLoading(false);
+    try {
+      const res = await GenerateImageFromPrompt({ prompt: post.prompt });
+      setPost({
+        ...post,
+        photo: res?.data?.photo, // Use the full data URI directly, no prefix added here
       });
+    } catch (error) {
+      setError(error?.response?.data?.message || error.message);
+    } finally {
+      setGenerateImageLoading(false);
+    }
   };
-  console.log(post.prompt);
-  
+
+  // console.log(post.prompt);
+
   const createPost = async () => {
     setcreatePostLoading(true);
     setError("");
